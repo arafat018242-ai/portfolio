@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit About - Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="admin-body">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Portfolio Admin</h2>
+            </div>
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="dashboard.html" class="sidebar-link">Dashboard</a></li>
+                    <li><a href="projects.html" class="sidebar-link">Projects</a></li>
+                    <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+                    <li><a href="about.html" class="sidebar-link active">About</a></li>
+                    <li><a href="messages.html" class="sidebar-link">Messages</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Edit About Section</h1>
+                <p class="page-subtitle">Update your bio and social links</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="data-table-container">
+                <form id="about-form" style="padding: var(--spacing-xl);">
+                    <div class="form-group">
+                        <label for="bio">Bio *</label>
+                        <textarea id="bio" name="bio" rows="6" required
+                            placeholder="Tell visitors about yourself..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Profile Image</label>
+                        <div class="file-input-wrapper">
+                            <label class="file-input-label">
+                                <input type="file" id="profileImage" name="profileImage" accept="image/*">
+                                <span>Click to upload profile image</span>
+                            </label>
+                        </div>
+                        <img id="profile-preview" class="image-preview" style="display: none;">
+                    </div>
+
+                    <h3 style="margin-top: var(--spacing-xl); margin-bottom: var(--spacing-md);">Social Links</h3>
+
+                    <div class="form-group">
+                        <label for="github">GitHub URL</label>
+                        <input type="url" id="github" name="github" placeholder="https://github.com/username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="linkedin">LinkedIn URL</label>
+                        <input type="url" id="linkedin" name="linkedin" placeholder="https://linkedin.com/in/username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="twitter">Twitter URL</label>
+                        <input type="url" id="twitter" name="twitter" placeholder="https://twitter.com/username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="your@email.com">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { auth } from '../js/firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        auth.onAuthStateChanged(user => {
+            if (!user) window.location.href = 'login.html';
+            else loadAbout();
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            sessionStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        });
+
+        async function loadAbout() {
+            try {
+                const response = await fetch('/api/about');
+                const about = await response.json();
+
+                if (about.bio) document.getElementById('bio').value = about.bio;
+                if (about.social) {
+                    document.getElementById('github').value = about.social.github || '';
+                    document.getElementById('linkedin').value = about.social.linkedin || '';
+                    document.getElementById('twitter').value = about.social.twitter || '';
+                    document.getElementById('email').value = about.social.email || '';
+                }
+                if (about.profileImageUrl) {
+                    const preview = document.getElementById('profile-preview');
+                    preview.src = about.profileImageUrl;
+                    preview.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading about:', error);
+            }
+        }
+
+        document.getElementById('profileImage').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('profile-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('about-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('bio', document.getElementById('bio').value);
+            formData.append('github', document.getElementById('github').value);
+            formData.append('linkedin', document.getElementById('linkedin').value);
+            formData.append('twitter', document.getElementById('twitter').value);
+            formData.append('email', document.getElementById('email').value);
+
+            const imageFile = document.getElementById('profileImage').files[0];
+            if (imageFile) {
+                formData.append('profileImage', imageFile);
+            }
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch('/api/about', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showAlert('About section updated successfully', 'success');
+                    loadAbout();
+                } else {
+                    throw new Error('Failed to update about section');
+                }
+            } catch (error) {
+                console.error('Error updating about:', error);
+                showAlert('Failed to update about section', 'error');
+            }
+        });
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+
+</html>

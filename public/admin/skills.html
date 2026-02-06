@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Skills - Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="admin-body">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Portfolio Admin</h2>
+            </div>
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="dashboard.html" class="sidebar-link">Dashboard</a></li>
+                    <li><a href="projects.html" class="sidebar-link">Projects</a></li>
+                    <li><a href="skills.html" class="sidebar-link active">Skills</a></li>
+                    <li><a href="about.html" class="sidebar-link">About</a></li>
+                    <li><a href="messages.html" class="sidebar-link">Messages</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Manage Skills</h1>
+                <p class="page-subtitle">Add, edit, or delete your skills</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="data-table-container">
+                <div class="table-header">
+                    <h3 class="table-title">Skills</h3>
+                    <button id="add-skill-btn" class="btn btn-primary">Add New Skill</button>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Proficiency</th>
+                            <th>Order</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="skills-tbody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: var(--spacing-xl);">Loading skills...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="skill-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Add New Skill</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+
+            <form id="skill-form">
+                <div class="modal-body">
+                    <input type="hidden" id="skill-id">
+
+                    <div class="form-group">
+                        <label for="name">Skill Name *</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category *</label>
+                        <select id="category" name="category" required>
+                            <option value="">Select category</option>
+                            <option value="frontend">Frontend</option>
+                            <option value="backend">Backend</option>
+                            <option value="tools">Tools & Others</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proficiency">Proficiency (0-100) *</label>
+                        <input type="number" id="proficiency" name="proficiency" min="0" max="100" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="order">Display Order</label>
+                        <input type="number" id="order" name="order" value="0" min="0">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Skill</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth } from '../js/firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        auth.onAuthStateChanged(user => {
+            if (!user) window.location.href = 'login.html';
+            else loadSkills();
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            sessionStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        });
+
+        async function loadSkills() {
+            try {
+                const response = await fetch('/api/skills');
+                const skills = await response.json();
+                const tbody = document.getElementById('skills-tbody');
+
+                if (skills.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-xl);">No skills yet. Add your first skill!</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = skills.map(skill => `
+                    <tr>
+                        <td>${skill.name}</td>
+                        <td><span class="tech-tag">${skill.category}</span></td>
+                        <td>${skill.proficiency}%</td>
+                        <td>${skill.order}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-edit" onclick="editSkill('${skill.id}')">Edit</button>
+                                <button class="btn btn-sm btn-delete" onclick="deleteSkill('${skill.id}', '${skill.name}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading skills:', error);
+                showAlert('Failed to load skills', 'error');
+            }
+        }
+
+        function showModal(title = 'Add New Skill', skillData = null) {
+            const modal = document.getElementById('skill-modal');
+            document.getElementById('modal-title').textContent = title;
+            modal.classList.add('active');
+
+            if (skillData) {
+                document.getElementById('skill-id').value = skillData.id;
+                document.getElementById('name').value = skillData.name;
+                document.getElementById('category').value = skillData.category;
+                document.getElementById('proficiency').value = skillData.proficiency;
+                document.getElementById('order').value = skillData.order || 0;
+            } else {
+                document.getElementById('skill-form').reset();
+            }
+        }
+
+        function hideModal() {
+            document.getElementById('skill-modal').classList.remove('active');
+            document.getElementById('skill-form').reset();
+            document.getElementById('skill-id').value = '';
+        }
+
+        window.editSkill = async function (id) {
+            try {
+                const response = await fetch('/api/skills');
+                const skills = await response.json();
+                const skill = skills.find(s => s.id === id);
+                if (skill) showModal('Edit Skill', skill);
+            } catch (error) {
+                showAlert('Failed to load skill details', 'error');
+            }
+        };
+
+        window.deleteSkill = async function (id, name) {
+            if (!confirm(`Delete "${name}"?`)) return;
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch(`/api/skills/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showAlert('Skill deleted successfully', 'success');
+                    loadSkills();
+                } else throw new Error('Failed to delete skill');
+            } catch (error) {
+                showAlert('Failed to delete skill', 'error');
+            }
+        };
+
+        document.getElementById('skill-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const skillId = document.getElementById('skill-id').value;
+            const data = {
+                name: document.getElementById('name').value,
+                category: document.getElementById('category').value,
+                proficiency: document.getElementById('proficiency').value,
+                order: document.getElementById('order').value
+            };
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const url = skillId ? `/api/skills/${skillId}` : '/api/skills';
+                const method = skillId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showAlert(`Skill ${skillId ? 'updated' : 'created'} successfully`, 'success');
+                    hideModal();
+                    loadSkills();
+                } else throw new Error('Failed to save skill');
+            } catch (error) {
+                showAlert('Failed to save skill', 'error');
+            }
+        });
+
+        document.getElementById('add-skill-btn').addEventListener('click', () => showModal());
+        document.getElementById('close-modal').addEventListener('click', hideModal);
+        document.getElementById('cancel-btn').addEventListener('click', hideModal);
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+
+</html>

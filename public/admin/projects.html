@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Projects - Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="admin-body">
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Portfolio Admin</h2>
+            </div>
+
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="dashboard.html" class="sidebar-link">Dashboard</a></li>
+                    <li><a href="projects.html" class="sidebar-link active">Projects</a></li>
+                    <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+                    <li><a href="about.html" class="sidebar-link">About</a></li>
+                    <li><a href="messages.html" class="sidebar-link">Messages</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Manage Projects</h1>
+                <p class="page-subtitle">Add, edit, or delete your portfolio projects</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="data-table-container">
+                <div class="table-header">
+                    <h3 class="table-title">Projects</h3>
+                    <button id="add-project-btn" class="btn btn-primary">Add New Project</button>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Title</th>
+                            <th>Technologies</th>
+                            <th>Featured</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-tbody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: var(--spacing-xl);">
+                                Loading projects...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Project Modal -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Add New Project</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+
+            <form id="project-form">
+                <div class="modal-body">
+                    <input type="hidden" id="project-id">
+
+                    <div class="form-group">
+                        <label for="title">Project Title *</label>
+                        <input type="text" id="title" name="title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description *</label>
+                        <textarea id="description" name="description" rows="4" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="technologies">Technologies (comma-separated) *</label>
+                        <input type="text" id="technologies" name="technologies" placeholder="React, Node.js, MongoDB"
+                            required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="liveUrl">Live URL</label>
+                            <input type="url" id="liveUrl" name="liveUrl" placeholder="https://example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="githubUrl">GitHub URL</label>
+                            <input type="url" id="githubUrl" name="githubUrl"
+                                placeholder="https://github.com/username/repo">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="order">Display Order</label>
+                            <input type="number" id="order" name="order" value="0" min="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="featured" name="featured">
+                                Featured Project
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Project Image</label>
+                        <div class="file-input-wrapper">
+                            <label class="file-input-label">
+                                <input type="file" id="image" name="image" accept="image/*">
+                                <span>Click to upload image</span>
+                            </label>
+                        </div>
+                        <img id="image-preview" class="image-preview" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth } from '../js/firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        let currentEditId = null;
+
+        // Check authentication
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                loadProjects();
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            sessionStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        });
+
+        // Load projects
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const projects = await response.json();
+
+                const tbody = document.getElementById('projects-tbody');
+
+                if (projects.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: var(--spacing-xl);">No projects yet. Add your first project!</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = projects.map(project => `
+                    <tr>
+                        <td>
+                            ${project.imageUrl ? `<img src="${project.imageUrl}" alt="${project.title}" style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm);">` : '<div style="width: 60px; height: 60px; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);"></div>'}
+                        </td>
+                        <td>${project.title}</td>
+                        <td>${project.technologies.slice(0, 3).join(', ')}${project.technologies.length > 3 ? '...' : ''}</td>
+                        <td>${project.featured ? '⭐ Yes' : 'No'}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-edit" onclick="editProject('${project.id}')">Edit</button>
+                                <button class="btn btn-sm btn-delete" onclick="deleteProject('${project.id}', '${project.title}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                showAlert('Failed to load projects', 'error');
+            }
+        }
+
+        // Show modal
+        function showModal(title = 'Add New Project', projectData = null) {
+            const modal = document.getElementById('project-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const form = document.getElementById('project-form');
+
+            modalTitle.textContent = title;
+            modal.classList.add('active');
+
+            if (projectData) {
+                document.getElementById('project-id').value = projectData.id;
+                document.getElementById('title').value = projectData.title;
+                document.getElementById('description').value = projectData.description;
+                document.getElementById('technologies').value = projectData.technologies.join(', ');
+                document.getElementById('liveUrl').value = projectData.liveUrl || '';
+                document.getElementById('githubUrl').value = projectData.githubUrl || '';
+                document.getElementById('order').value = projectData.order || 0;
+                document.getElementById('featured').checked = projectData.featured || false;
+
+                if (projectData.imageUrl) {
+                    const preview = document.getElementById('image-preview');
+                    preview.src = projectData.imageUrl;
+                    preview.style.display = 'block';
+                }
+            } else {
+                form.reset();
+                document.getElementById('image-preview').style.display = 'none';
+            }
+        }
+
+        // Hide modal
+        function hideModal() {
+            const modal = document.getElementById('project-modal');
+            modal.classList.remove('active');
+            document.getElementById('project-form').reset();
+            document.getElementById('project-id').value = '';
+            document.getElementById('image-preview').style.display = 'none';
+        }
+
+        // Edit project
+        window.editProject = async function (id) {
+            try {
+                const response = await fetch(`/api/projects/${id}`);
+                const project = await response.json();
+                showModal('Edit Project', project);
+            } catch (error) {
+                console.error('Error fetching project:', error);
+                showAlert('Failed to load project details', 'error');
+            }
+        };
+
+        // Delete project
+        window.deleteProject = async function (id, title) {
+            if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch(`/api/projects/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showAlert('Project deleted successfully', 'success');
+                    loadProjects();
+                } else {
+                    throw new Error('Failed to delete project');
+                }
+            } catch (error) {
+                console.error('Error deleting project:', error);
+                showAlert('Failed to delete project', 'error');
+            }
+        };
+
+        // Handle form submission
+        document.getElementById('project-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const projectId = document.getElementById('project-id').value;
+            const formData = new FormData();
+
+            formData.append('title', document.getElementById('title').value);
+            formData.append('description', document.getElementById('description').value);
+            formData.append('technologies', JSON.stringify(
+                document.getElementById('technologies').value.split(',').map(t => t.trim())
+            ));
+            formData.append('liveUrl', document.getElementById('liveUrl').value);
+            formData.append('githubUrl', document.getElementById('githubUrl').value);
+            formData.append('order', document.getElementById('order').value);
+            formData.append('featured', document.getElementById('featured').checked);
+
+            const imageFile = document.getElementById('image').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const url = projectId ? `/api/projects/${projectId}` : '/api/projects';
+                const method = projectId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showAlert(`Project ${projectId ? 'updated' : 'created'} successfully`, 'success');
+                    hideModal();
+                    loadProjects();
+                } else {
+                    throw new Error('Failed to save project');
+                }
+            } catch (error) {
+                console.error('Error saving project:', error);
+                showAlert('Failed to save project', 'error');
+            }
+        });
+
+        // Image preview
+        document.getElementById('image').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('image-preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Modal controls
+        document.getElementById('add-project-btn').addEventListener('click', () => showModal());
+        document.getElementById('close-modal').addEventListener('click', hideModal);
+        document.getElementById('cancel-btn').addEventListener('click', hideModal);
+
+        // Show alert
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>

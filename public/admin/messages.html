@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="admin-body">
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Portfolio Admin</h2>
+            </div>
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="dashboard.html" class="sidebar-link">Dashboard</a></li>
+                    <li><a href="projects.html" class="sidebar-link">Projects</a></li>
+                    <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+                    <li><a href="about.html" class="sidebar-link">About</a></li>
+                    <li><a href="messages.html" class="sidebar-link active">Messages</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Contact Messages</h1>
+                <p class="page-subtitle">View and manage messages from your portfolio</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="data-table-container">
+                <div class="table-header">
+                    <h3 class="table-title">Messages</h3>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Subject</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="messages-tbody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: var(--spacing-xl);">Loading messages...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Message Details</h3>
+                <button class="modal-close" id="close-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>From</label>
+                    <p id="msg-name" style="color: var(--text-primary);"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <p id="msg-email" style="color: var(--text-primary);"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Subject</label>
+                    <p id="msg-subject" style="color: var(--text-primary);"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Message</label>
+                    <p id="msg-message" style="color: var(--text-secondary); line-height: 1.6;"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Date</label>
+                    <p id="msg-date" style="color: var(--text-muted);"></p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="close-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth } from '../js/firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        auth.onAuthStateChanged(user => {
+            if (!user) window.location.href = 'login.html';
+            else loadMessages();
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await signOut(auth);
+            sessionStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        });
+
+        async function loadMessages() {
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch('/api/contact', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const messages = await response.json();
+                const tbody = document.getElementById('messages-tbody');
+
+                if (messages.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: var(--spacing-xl);">No messages yet.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = messages.map(msg => `
+                    <tr style="${!msg.read ? 'background: rgba(99, 102, 241, 0.05);' : ''}">
+                        <td>${msg.name}</td>
+                        <td>${msg.email}</td>
+                        <td>${msg.subject}</td>
+                        <td>${new Date(msg.createdAt).toLocaleDateString()}</td>
+                        <td>${msg.read ? 'Read' : '<strong style="color: var(--primary-light);">Unread</strong>'}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-edit" onclick="viewMessage('${msg.id}')">View</button>
+                                <button class="btn btn-sm btn-delete" onclick="deleteMessage('${msg.id}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                showAlert('Failed to load messages', 'error');
+            }
+        }
+
+        window.viewMessage = async function (id) {
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch('/api/contact', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const messages = await response.json();
+                const msg = messages.find(m => m.id === id);
+
+                if (msg) {
+                    document.getElementById('msg-name').textContent = msg.name;
+                    document.getElementById('msg-email').textContent = msg.email;
+                    document.getElementById('msg-subject').textContent = msg.subject;
+                    document.getElementById('msg-message').textContent = msg.message;
+                    document.getElementById('msg-date').textContent = new Date(msg.createdAt).toLocaleString();
+
+                    document.getElementById('message-modal').classList.add('active');
+
+                    // Mark as read
+                    if (!msg.read) {
+                        await fetch(`/api/contact/${id}/read`, {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        loadMessages();
+                    }
+                }
+            } catch (error) {
+                showAlert('Failed to load message', 'error');
+            }
+        };
+
+        window.deleteMessage = async function (id) {
+            if (!confirm('Delete this message?')) return;
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const response = await fetch(`/api/contact/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    showAlert('Message deleted successfully', 'success');
+                    loadMessages();
+                } else throw new Error('Failed to delete message');
+            } catch (error) {
+                showAlert('Failed to delete message', 'error');
+            }
+        };
+
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('message-modal').classList.remove('active');
+        });
+
+        document.getElementById('close-btn').addEventListener('click', () => {
+            document.getElementById('message-modal').classList.remove('active');
+        });
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="admin-body">
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">Portfolio Admin</h2>
+            </div>
+
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a href="dashboard.html" class="sidebar-link active">Dashboard</a></li>
+                    <li><a href="projects.html" class="sidebar-link">Projects</a></li>
+                    <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+                    <li><a href="about.html" class="sidebar-link">About</a></li>
+                    <li><a href="messages.html" class="sidebar-link">Messages</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Welcome back! Here's an overview of your portfolio.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Projects</div>
+                    <div class="stat-value" id="stat-projects">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-label">Total Skills</div>
+                    <div class="stat-value" id="stat-skills">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-label">Unread Messages</div>
+                    <div class="stat-value" id="stat-messages">0</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-label">Profile Status</div>
+                    <div class="stat-value" id="stat-profile">-</div>
+                </div>
+            </div>
+
+            <div class="data-table-container">
+                <div class="table-header">
+                    <h3 class="table-title">Quick Actions</h3>
+                </div>
+                <div style="padding: var(--spacing-lg);">
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md);">
+                        <a href="projects.html" class="btn btn-primary">Manage Projects</a>
+                        <a href="skills.html" class="btn btn-primary">Manage Skills</a>
+                        <a href="about.html" class="btn btn-primary">Edit About</a>
+                        <a href="messages.html" class="btn btn-primary">View Messages</a>
+                        <a href="../index.html" target="_blank" class="btn btn-secondary">View Portfolio</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { auth } from '../js/firebase-config.js';
+        import { signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Check authentication
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                loadDashboardStats();
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                sessionStorage.removeItem('adminToken');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+
+        // Load dashboard statistics
+        async function loadDashboardStats() {
+            try {
+                const token = sessionStorage.getItem('adminToken');
+
+                // Fetch projects count
+                const projectsRes = await fetch('/api/projects');
+                const projects = await projectsRes.json();
+                document.getElementById('stat-projects').textContent = projects.length;
+
+                // Fetch skills count
+                const skillsRes = await fetch('/api/skills');
+                const skills = await skillsRes.json();
+                document.getElementById('stat-skills').textContent = skills.length;
+
+                // Fetch messages count
+                const messagesRes = await fetch('/api/contact', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const messages = await messagesRes.json();
+                const unreadCount = messages.filter(m => !m.read).length;
+                document.getElementById('stat-messages').textContent = unreadCount;
+
+                // Fetch about status
+                const aboutRes = await fetch('/api/about');
+                const about = await aboutRes.json();
+                document.getElementById('stat-profile').textContent = about.bio ? 'Complete' : 'Incomplete';
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
