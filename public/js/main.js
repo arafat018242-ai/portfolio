@@ -54,11 +54,13 @@ async function loadSkills() {
         <span class="skill-category">${skill.category}</span>
         <div class="skill-header">
           <span class="skill-name">${skill.name}</span>
-          <span class="skill-percentage">${skill.proficiency}%</span>
+          <span class="skill-percentage">${skill.proficiency}</span>
         </div>
-        <div class="skill-bar">
-          <div class="skill-progress" style="width: ${skill.proficiency}%"></div>
-        </div>
+        ${skill.certificateUrl ? `
+          <div class="skill-footer" style="margin-top: 10px; display: flex; justify-content: flex-end;">
+            <a href="${skill.certificateUrl}" target="_blank" class="project-link link-live" style="padding: 4px 12px; font-size: 0.8rem; flex: none;">View Certificate</a>
+          </div>
+        ` : ''}
       </div>
     `).join('');
 

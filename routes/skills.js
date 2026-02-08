@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../services/firebase');
+const { db, uploadToStorage, deleteFromStorage } = require('../services/firebase');
 const { verifyToken } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // Get all skills
 router.get('/', async (req, res) => {
@@ -23,15 +24,20 @@ router.get('/', async (req, res) => {
 });
 
 // Create new skill (admin only)
-router.post('/', verifyToken, async (req, res) => {
+router.post('/', verifyToken, upload.single('certificate'), async (req, res) => {
     try {
-        const { name, category, proficiency, icon, order } = req.body;
+        const { name, category, proficiency, order } = req.body;
+
+        let certificateUrl = '';
+        if (req.file) {
+            certificateUrl = await uploadToStorage(req.file, 'skills');
+        }
 
         const skillData = {
             name,
             category,
-            proficiency: parseInt(proficiency) || 0,
-            icon: icon || '',
+            proficiency: proficiency || 'Beginner',
+            certificateUrl,
             order: parseInt(order) || 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -47,9 +53,9 @@ router.post('/', verifyToken, async (req, res) => {
 });
 
 // Update skill (admin only)
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken, upload.single('certificate'), async (req, res) => {
     try {
-        const { name, category, proficiency, icon, order } = req.body;
+        const { name, category, proficiency, order } = req.body;
 
         const docRef = db.collection('skills').doc(req.params.id);
         const doc = await docRef.get();
@@ -59,12 +65,20 @@ router.put('/:id', verifyToken, async (req, res) => {
         }
 
         const currentData = doc.data();
+        let certificateUrl = currentData.certificateUrl || '';
+
+        if (req.file) {
+            if (currentData.certificateUrl) {
+                await deleteFromStorage(currentData.certificateUrl);
+            }
+            certificateUrl = await uploadToStorage(req.file, 'skills');
+        }
 
         const skillData = {
             name: name || currentData.name,
             category: category || currentData.category,
-            proficiency: proficiency !== undefined ? parseInt(proficiency) : currentData.proficiency,
-            icon: icon !== undefined ? icon : currentData.icon,
+            proficiency: proficiency || currentData.proficiency,
+            certificateUrl,
             order: order !== undefined ? parseInt(order) : currentData.order,
             updatedAt: new Date().toISOString()
         };
