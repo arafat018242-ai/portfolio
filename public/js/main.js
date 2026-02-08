@@ -105,17 +105,38 @@ async function loadAbout() {
         }
 
         aboutContent.innerHTML = `
-      ${about.profileImageUrl ? `
-        <img src="${about.profileImageUrl}" alt="Profile" class="about-image">
-      ` : ''}
-      <div class="about-text">
-        <p>${about.bio || 'Welcome to my portfolio!'}</p>
+      <div class="about-visual">
+        ${about.profileImageUrl ? `
+          <img src="${about.profileImageUrl}" alt="Profile" class="about-image">
+        ` : ''}
+        <div class="info-card">
+          <h4 class="info-title">Quick Information</h4>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="info-label">Name:</span>
+              <span class="info-value">Nusrat</span>
+            </div>
+            ${about.social && about.social.email ? `
+              <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">${about.social.email}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="about-details">
+        <div class="bio-text">
+          <p>${about.bio || 'Welcome to my portfolio! I am passionate about creating meaningful work and connecting with others.'}</p>
+        </div>
         ${about.social ? `
-          <div class="social-links">
-            ${about.social.github ? `<a href="${about.social.github}" target="_blank" class="social-link" title="GitHub">GitHub</a>` : ''}
-            ${about.social.linkedin ? `<a href="${about.social.linkedin}" target="_blank" class="social-link" title="LinkedIn">LinkedIn</a>` : ''}
-            ${about.social.twitter ? `<a href="${about.social.twitter}" target="_blank" class="social-link" title="Twitter">Twitter</a>` : ''}
-            ${about.social.email ? `<a href="mailto:${about.social.email}" class="social-link" title="Email">Email</a>` : ''}
+          <div class="about-social-wrapper">
+             <div class="social-links">
+                ${about.social.github ? `<a href="${about.social.github}" target="_blank" class="social-link" title="GitHub">GitHub</a>` : ''}
+                ${about.social.linkedin ? `<a href="${about.social.linkedin}" target="_blank" class="social-link" title="LinkedIn">LinkedIn</a>` : ''}
+                ${about.social.twitter ? `<a href="${about.social.twitter}" target="_blank" class="social-link" title="Twitter">Twitter</a>` : ''}
+                ${about.social.email ? `<a href="mailto:${about.social.email}" class="social-link" title="Email">Email</a>` : ''}
+             </div>
           </div>
         ` : ''}
       </div>
