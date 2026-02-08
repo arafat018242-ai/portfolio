@@ -50,7 +50,17 @@ async function loadSkills() {
         }
 
         skillsContainer.innerHTML = skills.map(skill => {
-            const proficiencyDisplay = isNaN(skill.proficiency) ? skill.proficiency : `${skill.proficiency}%`;
+            let proficiencyDisplay = skill.proficiency;
+
+            // Map numeric proficiency to labels for legacy data
+            if (!isNaN(skill.proficiency) && skill.proficiency !== '') {
+                const p = parseInt(skill.proficiency);
+                if (p <= 25) proficiencyDisplay = 'Beginner';
+                else if (p <= 50) proficiencyDisplay = 'Intermediate';
+                else if (p <= 75) proficiencyDisplay = 'Advanced';
+                else proficiencyDisplay = 'Professional';
+            }
+
             return `
       <div class="skill-card">
         <span class="skill-category">${skill.category}</span>
