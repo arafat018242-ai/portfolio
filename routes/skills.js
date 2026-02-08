@@ -24,19 +24,28 @@ router.get('/', async (req, res) => {
 });
 
 // Create new skill (admin only)
-router.post('/', verifyToken, upload.single('certificate'), async (req, res) => {
+router.post('/', verifyToken, upload.fields([
+    { name: 'icon', maxCount: 1 },
+    { name: 'certificate', maxCount: 1 }
+]), async (req, res) => {
     try {
         const { name, category, proficiency, order } = req.body;
 
+        let iconUrl = '';
+        if (req.files && req.files.icon) {
+            iconUrl = await uploadToStorage(req.files.icon[0], 'skills/icons');
+        }
+
         let certificateUrl = '';
-        if (req.file) {
-            certificateUrl = await uploadToStorage(req.file, 'skills');
+        if (req.files && req.files.certificate) {
+            certificateUrl = await uploadToStorage(req.files.certificate[0], 'skills/certificates');
         }
 
         const skillData = {
             name,
             category,
             proficiency: proficiency || 'Beginner',
+            iconUrl,
             certificateUrl,
             order: parseInt(order) || 0,
             createdAt: new Date().toISOString(),
@@ -53,7 +62,10 @@ router.post('/', verifyToken, upload.single('certificate'), async (req, res) => 
 });
 
 // Update skill (admin only)
-router.put('/:id', verifyToken, upload.single('certificate'), async (req, res) => {
+router.put('/:id', verifyToken, upload.fields([
+    { name: 'icon', maxCount: 1 },
+    { name: 'certificate', maxCount: 1 }
+]), async (req, res) => {
     try {
         const { name, category, proficiency, order } = req.body;
 
@@ -65,19 +77,30 @@ router.put('/:id', verifyToken, upload.single('certificate'), async (req, res) =
         }
 
         const currentData = doc.data();
+        let iconUrl = currentData.iconUrl || '';
         let certificateUrl = currentData.certificateUrl || '';
 
-        if (req.file) {
+        // Handle icon upload
+        if (req.files && req.files.icon) {
+            if (currentData.iconUrl) {
+                await deleteFromStorage(currentData.iconUrl);
+            }
+            iconUrl = await uploadToStorage(req.files.icon[0], 'skills/icons');
+        }
+
+        // Handle certificate upload
+        if (req.files && req.files.certificate) {
             if (currentData.certificateUrl) {
                 await deleteFromStorage(currentData.certificateUrl);
             }
-            certificateUrl = await uploadToStorage(req.file, 'skills');
+            certificateUrl = await uploadToStorage(req.files.certificate[0], 'skills/certificates');
         }
 
         const skillData = {
             name: name || currentData.name,
             category: category || currentData.category,
             proficiency: proficiency || currentData.proficiency,
+            iconUrl,
             certificateUrl,
             order: order !== undefined ? parseInt(order) : currentData.order,
             updatedAt: new Date().toISOString()

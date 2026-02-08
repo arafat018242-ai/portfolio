@@ -65,7 +65,10 @@ async function loadSkills() {
       <div class="skill-card">
         <span class="skill-category">${skill.category}</span>
         <div class="skill-header">
-          <span class="skill-name">${skill.name}</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            ${skill.iconUrl ? `<img src="${skill.iconUrl}" alt="${skill.name}" style="width: 24px; height: 24px; object-fit: contain;">` : ''}
+            <span class="skill-name">${skill.name}</span>
+          </div>
           <span class="skill-percentage">${proficiencyDisplay}</span>
         </div>
         ${skill.certificateUrl ? `
