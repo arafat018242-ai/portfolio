@@ -150,11 +150,20 @@
                     return;
                 }
 
-                tbody.innerHTML = skills.map(skill => `
+                tbody.innerHTML = skills.map(skill => {
+                    let proficiencyDisplay = skill.proficiency;
+                    if (!isNaN(skill.proficiency) && skill.proficiency !== '') {
+                        const p = parseInt(skill.proficiency);
+                        if (p <= 25) proficiencyDisplay = 'Beginner';
+                        else if (p <= 50) proficiencyDisplay = 'Intermediate';
+                        else if (p <= 75) proficiencyDisplay = 'Advanced';
+                        else proficiencyDisplay = 'Professional';
+                    }
+                    return `
                     <tr>
                         <td>${skill.name}</td>
                         <td><span class="tech-tag">${skill.category}</span></td>
-                        <td>${skill.proficiency}</td>
+                        <td>${proficiencyDisplay}</td>
                         <td>${skill.certificateUrl ? `<a href="${skill.certificateUrl}" target="_blank" class="link-live" style="padding: 2px 8px; font-size: 0.8rem;">View</a>` : 'None'}</td>
                         <td>${skill.order}</td>
                         <td>
@@ -164,7 +173,7 @@
                             </div>
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
             } catch (error) {
                 console.error('Error loading skills:', error);
                 showAlert('Failed to load skills', 'error');
@@ -183,7 +192,17 @@
                 document.getElementById('skill-id').value = skillData.id;
                 document.getElementById('name').value = skillData.name;
                 document.getElementById('category').value = skillData.category;
-                document.getElementById('proficiency').value = skillData.proficiency;
+
+                let proficiencyValue = skillData.proficiency;
+                if (!isNaN(proficiencyValue) && proficiencyValue !== '') {
+                    const p = parseInt(proficiencyValue);
+                    if (p <= 25) proficiencyValue = 'Beginner';
+                    else if (p <= 50) proficiencyValue = 'Intermediate';
+                    else if (p <= 75) proficiencyValue = 'Advanced';
+                    else proficiencyValue = 'Professional';
+                }
+                document.getElementById('proficiency').value = proficiencyValue;
+
                 document.getElementById('order').value = skillData.order || 0;
                 if (skillData.certificateUrl) {
                     currentCertLabel.textContent = 'Current certificate exists. Upload new to replace.';
