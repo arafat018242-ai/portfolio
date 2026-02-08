@@ -103,7 +103,12 @@
 
         async function loadAbout() {
             try {
-                const response = await fetch('/api/about');
+                const idToken = await auth.currentUser.getIdToken();
+                const response = await fetch('/api/about', {
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                });
                 const about = await response.json();
 
                 if (about.bio) document.getElementById('bio').value = about.bio;
@@ -139,6 +144,11 @@
         document.getElementById('about-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
             const formData = new FormData();
             formData.append('bio', document.getElementById('bio').value);
             formData.append('github', document.getElementById('github').value);
@@ -152,7 +162,7 @@
             }
 
             try {
-                const token = sessionStorage.getItem('adminToken');
+                const token = await auth.currentUser.getIdToken();
                 const response = await fetch('/api/about', {
                     method: 'PUT',
                     headers: {
@@ -165,11 +175,15 @@
                     showAlert('About section updated successfully', 'success');
                     loadAbout();
                 } else {
-                    throw new Error('Failed to update about section');
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to update about section');
                 }
             } catch (error) {
                 console.error('Error updating about:', error);
-                showAlert('Failed to update about section', 'error');
+                showAlert(error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
             }
         });
 

@@ -75,10 +75,10 @@ router.put('/', verifyToken, upload.fields([
             profileImageUrl,
             resumeUrl,
             social: {
-                github: github || currentData.social?.github || '',
-                linkedin: linkedin || currentData.social?.linkedin || '',
-                twitter: twitter || currentData.social?.twitter || '',
-                email: email || currentData.social?.email || ''
+                github: github || (currentData.social && currentData.social.github) || '',
+                linkedin: linkedin || (currentData.social && currentData.social.linkedin) || '',
+                twitter: twitter || (currentData.social && currentData.social.twitter) || '',
+                email: email || (currentData.social && currentData.social.email) || ''
             },
             updatedAt: new Date().toISOString()
         };
