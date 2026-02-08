@@ -49,12 +49,14 @@ async function loadSkills() {
             return;
         }
 
-        skillsContainer.innerHTML = skills.map(skill => `
+        skillsContainer.innerHTML = skills.map(skill => {
+            const proficiencyDisplay = isNaN(skill.proficiency) ? skill.proficiency : `${skill.proficiency}%`;
+            return `
       <div class="skill-card">
         <span class="skill-category">${skill.category}</span>
         <div class="skill-header">
           <span class="skill-name">${skill.name}</span>
-          <span class="skill-percentage">${skill.proficiency}</span>
+          <span class="skill-percentage">${proficiencyDisplay}</span>
         </div>
         ${skill.certificateUrl ? `
           <div class="skill-footer" style="margin-top: 10px; display: flex; justify-content: flex-end;">
@@ -62,7 +64,7 @@ async function loadSkills() {
           </div>
         ` : ''}
       </div>
-    `).join('');
+    `}).join('');
 
         // Animate skill bars
         setTimeout(() => {
@@ -97,10 +99,10 @@ async function loadAbout() {
         <p>${about.bio || 'Welcome to my portfolio!'}</p>
         ${about.social ? `
           <div class="social-links">
-            ${about.social.github ? `<a href="${about.social.github}" target="_blank" class="social-link" title="GitHub">GH</a>` : ''}
-            ${about.social.linkedin ? `<a href="${about.social.linkedin}" target="_blank" class="social-link" title="LinkedIn">IN</a>` : ''}
-            ${about.social.twitter ? `<a href="${about.social.twitter}" target="_blank" class="social-link" title="Twitter">TW</a>` : ''}
-            ${about.social.email ? `<a href="mailto:${about.social.email}" class="social-link" title="Email">EM</a>` : ''}
+            ${about.social.github ? `<a href="${about.social.github}" target="_blank" class="social-link" title="GitHub">GitHub</a>` : ''}
+            ${about.social.linkedin ? `<a href="${about.social.linkedin}" target="_blank" class="social-link" title="LinkedIn">LinkedIn</a>` : ''}
+            ${about.social.twitter ? `<a href="${about.social.twitter}" target="_blank" class="social-link" title="Twitter">Twitter</a>` : ''}
+            ${about.social.email ? `<a href="mailto:${about.social.email}" class="social-link" title="Email">Email</a>` : ''}
           </div>
         ` : ''}
       </div>
